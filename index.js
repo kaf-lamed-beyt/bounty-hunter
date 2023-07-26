@@ -2,6 +2,7 @@
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
  */
+
 module.exports = (app) => {
   let monitoredRepoIssueNumber;
 
@@ -14,7 +15,13 @@ module.exports = (app) => {
       issue_number: monitoredRepoIssueNumber,
     });
 
-    return (await issue).data.body.split("\n").map((repo) => repo.trim());
+    const issueBody = (await issue).data.body;
+    const monitoredRepos = issueBody
+      .split("\n")
+      .slice(1)
+      .map((repo) => repo.trim());
+
+    return monitoredRepos;
   };
 
   app.on("issue_comment.created", async (context) => {
@@ -29,6 +36,7 @@ module.exports = (app) => {
       if (repositoryLinks && repositoryLinks[0]) {
         if (!monitoredRepoIssueNumber) {
           const issue = await context.octokit.issues.create({
+            labels: ["oss-bounties"],
             title: "OSS Projects with Bounties",
             repo: context.payload.repository.name,
             owner: context.payload.repository.owner.login,
@@ -37,6 +45,8 @@ module.exports = (app) => {
 
           monitoredRepoIssueNumber = issue.data.number;
         }
+
+        console.log(`current issue number is: ${monitoredRepoIssueNumber}`);
 
         const formattedLinks =
           repositoryLinks.length === 1
@@ -55,22 +65,17 @@ module.exports = (app) => {
                 );
 
         const monitoredRepositories = await getMonitoredReposFromIssue(context);
-        const updatedRepoList = [...monitoredRepositories, ...formattedLinks];
-
-        // update the issue with the repository list if there is any.
-        await context.octokit.issues.update({
-          repo: context.payload.repository.name,
-          issue_number: monitoredRepoIssueNumber,
-          owner: context.payload.repository.owner.login,
-          body: `Below are the repositories you're monitoring for bounties \n\n ${updatedRepoList
-            .map((repo) => `**${repo}**`)
-            .join("\n")}`,
-        });
+        const updatedRepoList = [
+          // ...monitoredRepositories.map((repos) => repos.split("-").join("")), // remove the "-" from body when it is updated.
+          ...monitoredRepositories,
+          ...formattedLinks,
+        ];
 
         const confirmationMessage = `Way to go! 🚀🎉 \n\n You are now monitoring bounties in${
           updatedRepoList.length > 1 ? " the following repositories:" : ":"
         }\n\n ${updatedRepoList
-          .map((repo) => `**${repo}**`)
+          .map((repo) => `- **${repo}**`)
+          .slice(1)
           .join(
             "\n"
           )} \n\n Whenever a bounty is created in these repos, you'll be the first to know. How awesome! 🤯`;
@@ -80,6 +85,19 @@ module.exports = (app) => {
           owner: context.payload.repository.owner.login,
           repo: context.payload.repository.name,
           issue_number: context.payload.issue.number,
+        });
+
+        // update the issue with the repository list if there is any.
+        const updatedIssueBody = updatedRepoList
+          .map((repo) => `- **${repo}**`)
+          .splice(1)
+          .join("\n");
+
+        await context.octokit.issues.update({
+          repo: context.payload.repository.name,
+          issue_number: monitoredRepoIssueNumber,
+          owner: context.payload.repository.owner.login,
+          body: `Below are the repositories you're monitoring for bounties\n\n${updatedIssueBody}`,
         });
       } else {
         const user = context.payload.sender.login;
@@ -101,6 +119,7 @@ module.exports = (app) => {
       const monitoredRepos = await getMonitoredReposFromIssue(context);
       const repoListSuccess = `Here you go, Champ! 🍷 \n\n ${monitoredRepos
         .map((repo) => `**${repo}**`)
+        .slice(1)
         .join("\n")}`;
       const repoListError =
         "You have not set any repositories to monitor. Use the `/monitor-repos` command to add repositories.";
