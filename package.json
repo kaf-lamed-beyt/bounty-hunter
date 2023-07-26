@@ -2,7 +2,7 @@
   "name": "bounty-hunter",
   "version": "1.0.0",
   "private": true,
-  "description": "A Probot app",
+  "description": "Get notified whenever any repository has a bounty",
   "author": "kaf-lamed-beyt",
   "license": "ISC",
   "homepage": "https://github.com//",
