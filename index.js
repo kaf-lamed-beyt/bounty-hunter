@@ -193,12 +193,6 @@ module.exports = (app) => {
       };
 
       try {
-        // await context.octokit.repos.createWebhook({
-        //   owner: context.payload.repository.owner.login,
-        //   repo: repositoryName,
-        //   ...webhookConfig,
-        // });
-
         const monitoredRepos = await getMonitoredReposFromIssue(context);
         const cleanRepoName = (repo) =>
           repo.replace(/^\s*-\s*\*\*|\*\*\s*$/g, "").trim();
