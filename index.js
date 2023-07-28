@@ -21,7 +21,43 @@ module.exports = (app) => {
       .slice(1)
       .map((repo) => repo.trim());
 
-    return monitoredRepos;
+    const filteredRepos = monitoredRepos.filter((repo) => repo !== "");
+
+    return filteredRepos;
+  };
+
+  const sendNotification = async (issue) => {
+    console.log("New bounty issue:", issue.title);
+    console.log("Bounty creator:", issue.user.login);
+    console.log("Bounty amount (USD):", getBountyAmount(issue));
+    console.log("Attempt users:", getAttemptingUsers(issue));
+  };
+
+  const getBountyAmount = (issue) => {
+    const comments = issue.comment;
+
+    for (const comment of comments) {
+      if (comment.body.includes("/bounty")) {
+        const bountyPriceMatch = comment.body.match(/\/bounty (\d+)/i);
+
+        if (bountyPriceMatch && bountyPriceMatch[1]) {
+          return parseInt(bountyPriceMatch[1]);
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const getAttemptingUsers = (issue) => {
+    const comments = issue.comments;
+    const attemptUsers = [];
+    for (const comment of comments) {
+      if (comment.body.includes("/attempt")) {
+        attemptUsers.push(comment.user.login);
+      }
+    }
+    return attemptUsers;
   };
 
   app.on("issue_comment.created", async (context) => {
@@ -50,7 +86,7 @@ module.exports = (app) => {
 
         const formattedLinks =
           repositoryLinks.length === 1
-            ? repositoryLinks[0]
+            ? repositoryLinks[0].split(",").map((link) => link.trim())
             : repositoryLinks[0]
                 .split(",")
                 .map((link) =>
@@ -76,9 +112,9 @@ module.exports = (app) => {
         }\n\n ${updatedRepoList
           .map((repo) => `- **${repo}**`)
           .slice(1)
-          .join(
-            "\n"
-          )} \n\n Whenever a bounty is created in these repos, you'll be the first to know. How awesome! 🤯`;
+          .join("\n")} \n\n Whenever a bounty is created in ${
+          updatedRepoList.length > 1 ? "these repos" : "this repo"
+        }, you'll be the first to know. How awesome! 🤯`;
 
         await context.octokit.issues.createComment({
           body: confirmationMessage,
@@ -97,7 +133,10 @@ module.exports = (app) => {
           repo: context.payload.repository.name,
           issue_number: monitoredRepoIssueNumber,
           owner: context.payload.repository.owner.login,
-          body: `Below are the repositories you're monitoring for bounties\n\n${updatedIssueBody}`,
+          body: `Below are the repositories you're monitoring for bounties\n\n${updatedIssueBody
+            .split("-")
+            .map((repo, index) => (index === 0 ? repo : `-${repo}`))
+            .join("")}`,
         });
       } else {
         const user = context.payload.sender.login;
@@ -111,6 +150,58 @@ module.exports = (app) => {
           owner: context.payload.repository.owner.login,
           repo: context.payload.repository.name,
           issue_number: context.payload.issue.number,
+        });
+      }
+
+      try {
+        const monitoredRepos = await getMonitoredReposFromIssue(context);
+        const cleanRepoName = (repo) =>
+          repo.replace(/^\s*-\s*\*\*|\*\*\s*$/g, "").trim();
+
+        const cleanedRepos = monitoredRepos.map((repo) => cleanRepoName(repo));
+
+        for (const repositoryName of cleanedRepos) {
+          const [owner, repo] = repositoryName.split("/");
+
+          await context.octokit.repos.get({
+            owner,
+            repo,
+          });
+        }
+      } catch (error) {
+        const user = context.payload.sender.login;
+        // const message = `@${user} The repository "${error.repo}" does not exist or it could be that bounti-hunter does not have access to it.`;
+        const message = `@${user}, this is the error: ${error}`;
+
+        await context.octokit.issues.createComment({
+          body: message,
+          ...context.issue(),
+        });
+
+        return;
+      }
+
+      const webhookConfig = {
+        config: {
+          content_type: "json",
+          secret: "development",
+          url: "https://smee.io/1O47KZUc6vqvEBwm",
+        },
+      };
+
+      try {
+        await context.octokit.repos.createWebhook({
+          owner: context.payload.repository.owner.login,
+          repo: repositoryName,
+          ...webhookConfig,
+        });
+      } catch (error) {
+        const user = context.payload.sender.login;
+        const message = `@${user} An error occurred while trying to subscribe to "${repositoryName}".`;
+
+        await context.octokit.issues.createComment({
+          body: message,
+          ...context.issue(),
         });
       }
     }
@@ -130,6 +221,19 @@ module.exports = (app) => {
         owner: context.payload.repository.owner.login,
         body: monitoredRepos.length > 0 ? repoListSuccess : repoListError,
       });
+    }
+  });
+
+  app.on("issues.opened", async (context) => {
+    const { payload } = context;
+    const { issue } = payload;
+
+    const hasBountyLabel = issue.labels.some(
+      (label) => label.name === "💎 Bounty"
+    );
+
+    if (hasBountyLabel) {
+      await sendNotification(issue);
     }
   });
 };
