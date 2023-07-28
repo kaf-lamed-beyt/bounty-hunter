@@ -72,7 +72,7 @@ module.exports = (app) => {
       if (repositoryLinks && repositoryLinks[0]) {
         if (!monitoredRepoIssueNumber) {
           const issue = await context.octokit.issues.create({
-            labels: ["oss-bounties"],
+            labels: ["💰 oss-bounties"],
             title: "OSS Projects with Bounties",
             repo: context.payload.repository.name,
             owner: context.payload.repository.owner.login,
@@ -157,15 +157,18 @@ module.exports = (app) => {
         const monitoredRepos = await getMonitoredReposFromIssue(context);
         const cleanRepoName = (repo) =>
           repo.replace(/^\s*-\s*\*\*|\*\*\s*$/g, "").trim();
-
         const cleanedRepos = monitoredRepos.map((repo) => cleanRepoName(repo));
 
         for (const repositoryName of cleanedRepos) {
           const [owner, repo] = repositoryName.split("/");
 
+          console.log(`${owner} is the owner`);
+          console.log(`this is the name of repo: ${repo}`);
+          console.log(repositoryName);
+
           await context.octokit.repos.get({
-            owner,
-            repo,
+            owner: owner,
+            repo: repo,
           });
         }
       } catch (error) {
@@ -190,14 +193,32 @@ module.exports = (app) => {
       };
 
       try {
-        await context.octokit.repos.createWebhook({
-          owner: context.payload.repository.owner.login,
-          repo: repositoryName,
-          ...webhookConfig,
-        });
+        // await context.octokit.repos.createWebhook({
+        //   owner: context.payload.repository.owner.login,
+        //   repo: repositoryName,
+        //   ...webhookConfig,
+        // });
+
+        const monitoredRepos = await getMonitoredReposFromIssue(context);
+        const cleanRepoName = (repo) =>
+          repo.replace(/^\s*-\s*\*\*|\*\*\s*$/g, "").trim();
+        const cleanedRepos = monitoredRepos.map((repo) => cleanRepoName(repo));
+
+        for (const repositoryName of cleanedRepos) {
+          const [owner, repo] = repositoryName.split("/");
+
+          console.log(`this is the owner: ${owner}`);
+          console.log(`this is the name of repo: ${repo}`);
+
+          await context.octokit.repos.createWebhook({
+            owner: owner,
+            repo: repo,
+            ...webhookConfig,
+          });
+        }
       } catch (error) {
         const user = context.payload.sender.login;
-        const message = `@${user} An error occurred while trying to subscribe to "${repositoryName}".`;
+        const message = `@${user} An error occurred while trying to subscribe to "${error}".`;
 
         await context.octokit.issues.createComment({
           body: message,
