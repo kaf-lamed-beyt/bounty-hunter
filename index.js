@@ -243,7 +243,7 @@ module.exports = (app) => {
     const { payload } = context;
     const { issue } = payload;
 
-    const hasBountyLabel = issue.labels.some(
+    const hasBountyLabel = issue.labels?.some(
       (label) => label.name === "💎 Bounty"
     );
 
