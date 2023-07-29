@@ -3,6 +3,7 @@ const nock = require("nock");
 const myProbotApp = require("..");
 const { Probot, ProbotOctokit } = require("probot");
 // Requiring our fixtures
+/** @type import('@octokit/webhooks-types').IssuesOpenedEvent */
 const payload = require("./fixtures/issue.opened");
 
 const issueCreatedBody = { body: "Thanks for opening this issue!" };
@@ -15,6 +16,7 @@ const privateKey = fs.readFileSync(
 );
 
 describe("My Probot app", () => {
+  /** @type Probot | undefined */
   let probot;
 
   beforeEach(() => {
@@ -51,7 +53,7 @@ describe("My Probot app", () => {
       .reply(200);
 
     // Receive a webhook event
-    await probot.receive({ name: "issues", payload });
+    await probot?.receive({ name: "issues", payload });
 
     expect(mock.pendingMocks()).toStrictEqual([]);
   });
