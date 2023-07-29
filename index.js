@@ -26,16 +26,25 @@ module.exports = (app) => {
     return filteredRepos;
   };
 
-  const sendNotification = async (issue) => {
+  const sendNotification = async (issue, context) => {
     console.log("New bounty issue:", issue.title);
     console.log("Bounty creator:", issue.user.login);
-    console.log("Bounty amount (USD):", getBountyAmount(issue));
-    console.log("Attempt users:", getAttemptingUsers(issue));
+
+    if (issue.comments > 0) {
+      /** @type import('@octokit/types').Endpoints["GET /repos/{owner}/{repo}/issues/{issue_number}/comments"]["response"] */
+      const { data: comments } = await context.octokit.issues.listComments({
+        repo: context.payload.repository.name,
+        owner: context.payload.repository.owner.login,
+        issue_number: issue.number,
+      });
+
+      console.log("Bounty amount (USD):", await getBountyAmount(comments));
+      console.log("Attempt users:", getAttemptingUsers(comments));
+    }
   };
 
-  const getBountyAmount = (issue) => {
-    const comments = issue.comment;
-
+  const getBountyAmount = async (comments) => {
+    console.log("comments", comments)
     for (const comment of comments) {
       if (comment.body.includes("/bounty")) {
         const bountyPriceMatch = comment.body.match(/\/bounty (\d+)/i);
@@ -49,8 +58,7 @@ module.exports = (app) => {
     return null;
   };
 
-  const getAttemptingUsers = (issue) => {
-    const comments = issue.comments;
+  const getAttemptingUsers = (comments) => {
     const attemptUsers = [];
     for (const comment of comments) {
       if (comment.body.includes("/attempt")) {
@@ -243,12 +251,12 @@ module.exports = (app) => {
     const { payload } = context;
     const { issue } = payload;
 
-    const hasBountyLabel = issue.labels.some(
+    const hasBountyLabel = issue.labels?.some(
       (label) => label.name === "💎 Bounty"
     );
 
     if (hasBountyLabel) {
-      await sendNotification(issue);
+      await sendNotification(issue, context);
     }
   });
 };

@@ -2,11 +2,16 @@ const nock = require("nock");
 // Requiring our app implementation
 const myProbotApp = require("..");
 const { Probot, ProbotOctokit } = require("probot");
-// Requiring our fixtures
-const payload = require("./fixtures/issues.opened");
-const issueCreatedBody = { body: "Thanks for opening this issue!" };
 const fs = require("fs");
 const path = require("path");
+
+// Requiring our fixtures
+/** @type import('@octokit/webhooks-types').IssuesOpenedEvent */
+const payloadWithBountyWithComments = require("./fixtures/issue.opened.withBounty.withComments.json");
+/** @type import('@octokit/webhooks-types').IssuesOpenedEvent */
+const payloadWithBountyWihtoutComments = require("./fixtures/issue.opened.withBounty.withoutComments.json");
+/** @type import('@octokit/webhooks-types').IssuesOpenedEvent */
+const payloadWithoutBounty = require("./fixtures/issue.opened.withoutBounty.json");
 
 const privateKey = fs.readFileSync(
   path.join(__dirname, "fixtures/mock-cert.pem"),
@@ -14,6 +19,7 @@ const privateKey = fs.readFileSync(
 );
 
 describe("My Probot app", () => {
+  /** @type Probot | undefined */
   let probot;
 
   beforeEach(() => {
@@ -31,28 +37,55 @@ describe("My Probot app", () => {
     probot.load(myProbotApp);
   });
 
-  test("creates a comment when an issue is opened", async () => {
-    const mock = nock("https://api.github.com")
-      // Test that we correctly return a test token
-      .post("/app/installations/2/access_tokens")
-      .reply(200, {
-        token: "test",
-        permissions: {
-          issues: "write",
-        },
-      })
+  describe("when an issue is opened if it contains 'Bounty' label", () => {
+    test("creates a comment if it has comments", async () => {
+      const mock = nock("https://api.github.com")
+        // Test that a comment is posted
+        .get("/repos/Codertocat/Hello-World/issues/1/comments")
+        .reply(200, [
+          {
+            id: 1,
+            body: "/bounty 100",
+          },
+        ]);
 
-      // Test that a comment is posted
-      .post("/repos/hiimbex/testing-things/issues/1/comments", (body) => {
-        expect(body).toMatchObject(issueCreatedBody);
-        return true;
-      })
+      // Receive a webhook event
+      await probot?.receive({
+        name: "issues",
+        payload: payloadWithBountyWithComments,
+      });
+
+      expect(mock.pendingMocks()).toStrictEqual([]);
+    });
+
+    test("DOES NOT create a comment if it has NOT comments", async () => {
+      const mock = nock("https://api.github.com")
+        .get("/repos/Codertocat/Hello-World/issues/1/comments")
+        .reply(200);
+
+      // Receive a webhook event
+      await probot?.receive({
+        name: "issues",
+        payload: payloadWithBountyWihtoutComments,
+      });
+
+      expect(mock.pendingMocks()).toStrictEqual([
+        "GET https://api.github.com:443/repos/Codertocat/Hello-World/issues/1/comments",
+      ]);
+    });
+  });
+
+  test("DOES NOT create a comment when an issue is opened if it DOES NOT contain 'Bounty' label", async () => {
+    const mock = nock("https://api.github.com")
+      .get("/repos/hiimbex/testing-things/issues/1/comments")
       .reply(200);
 
     // Receive a webhook event
-    await probot.receive({ name: "issues", payload });
+    await probot?.receive({ name: "issues", payload: payloadWithoutBounty });
 
-    expect(mock.pendingMocks()).toStrictEqual([]);
+    expect(mock.pendingMocks()).toStrictEqual([
+      "GET https://api.github.com:443/repos/hiimbex/testing-things/issues/1/comments",
+    ]);
   });
 
   afterEach(() => {
