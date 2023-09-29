@@ -26,48 +26,6 @@ module.exports = (app) => {
     return filteredRepos;
   };
 
-  const sendNotification = async (issue, context) => {
-    console.log("New bounty issue:", issue.title);
-    console.log("Bounty creator:", issue.user.login);
-
-    if (issue.comments > 0) {
-      /** @type import('@octokit/types').Endpoints["GET /repos/{owner}/{repo}/issues/{issue_number}/comments"]["response"] */
-      const { data: comments } = await context.octokit.issues.listComments({
-        repo: context.payload.repository.name,
-        owner: context.payload.repository.owner.login,
-        issue_number: issue.number,
-      });
-
-      console.log("Bounty amount (USD):", await getBountyAmount(comments));
-      console.log("Attempt users:", getAttemptingUsers(comments));
-    }
-  };
-
-  const getBountyAmount = async (comments) => {
-    console.log("comments", comments)
-    for (const comment of comments) {
-      if (comment.body.includes("/bounty")) {
-        const bountyPriceMatch = comment.body.match(/\/bounty (\d+)/i);
-
-        if (bountyPriceMatch && bountyPriceMatch[1]) {
-          return parseInt(bountyPriceMatch[1]);
-        }
-      }
-    }
-
-    return null;
-  };
-
-  const getAttemptingUsers = (comments) => {
-    const attemptUsers = [];
-    for (const comment of comments) {
-      if (comment.body.includes("/attempt")) {
-        attemptUsers.push(comment.user.login);
-      }
-    }
-    return attemptUsers;
-  };
-
   app.on("issue_comment.created", async (context) => {
     const comment = context.payload.comment;
     const repoFullName = context.payload.repository.full_name;
@@ -84,13 +42,13 @@ module.exports = (app) => {
             title: "OSS Projects with Bounties",
             repo: context.payload.repository.name,
             owner: context.payload.repository.owner.login,
-            body: "This issue was created (because you triggered **bounti-hunter**) to help you monitor some OSS repositories for Bounties.",
+            body: "This issue was created (because you triggered bounti-hunter) to help you monitor some OSS repositories for Bounties.",
           });
 
           monitoredRepoIssueNumber = issue.data.number;
         }
 
-        console.log(`current issue number is: ${monitoredRepoIssueNumber}`);
+        // console.log(`current issue number is: ${monitoredRepoIssueNumber}`);
 
         const formattedLinks =
           repositoryLinks.length === 1
@@ -175,8 +133,8 @@ module.exports = (app) => {
           console.log(repositoryName);
 
           await context.octokit.repos.get({
-            owner: owner,
-            repo: repo,
+            owner: "kaf-lamed-beyt",
+            repo: "css-frolicking",
           });
         }
       } catch (error) {
@@ -190,42 +148,6 @@ module.exports = (app) => {
         });
 
         return;
-      }
-
-      const webhookConfig = {
-        config: {
-          content_type: "json",
-          secret: "development",
-          url: "https://smee.io/1O47KZUc6vqvEBwm",
-        },
-      };
-
-      try {
-        const monitoredRepos = await getMonitoredReposFromIssue(context);
-        const cleanRepoName = (repo) =>
-          repo.replace(/^\s*-\s*\*\*|\*\*\s*$/g, "").trim();
-        const cleanedRepos = monitoredRepos.map((repo) => cleanRepoName(repo));
-
-        for (const repositoryName of cleanedRepos) {
-          const [owner, repo] = repositoryName.split("/");
-
-          console.log(`this is the owner: ${owner}`);
-          console.log(`this is the name of repo: ${repo}`);
-
-          await context.octokit.repos.createWebhook({
-            owner: owner,
-            repo: repo,
-            ...webhookConfig,
-          });
-        }
-      } catch (error) {
-        const user = context.payload.sender.login;
-        const message = `@${user} An error occurred while trying to subscribe to "${error}".`;
-
-        await context.octokit.issues.createComment({
-          body: message,
-          ...context.issue(),
-        });
       }
     }
 
@@ -244,19 +166,6 @@ module.exports = (app) => {
         owner: context.payload.repository.owner.login,
         body: monitoredRepos.length > 0 ? repoListSuccess : repoListError,
       });
-    }
-  });
-
-  app.on("issues.opened", async (context) => {
-    const { payload } = context;
-    const { issue } = payload;
-
-    const hasBountyLabel = issue.labels?.some(
-      (label) => label.name === "💎 Bounty"
-    );
-
-    if (hasBountyLabel) {
-      await sendNotification(issue, context);
     }
   });
 };
