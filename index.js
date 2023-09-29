@@ -28,21 +28,20 @@ module.exports = (app) => {
 
   app.on("issue_comment.created", async (context) => {
     const comment = context.payload.comment;
-    const repoFullName = context.payload.repository.full_name;
 
     if (comment.body.includes("/monitor-repos")) {
       // match the series of texts after a whitespace following the "/monitor-repos" command with RegEx.
       // The `i` at the end makes it case-insentitive to acommodate various inputs
       const repositoryLinks = comment.body.match(/\/monitor-repos\s+(.+)/i);
 
-      if (repositoryLinks && repositoryLinks[0]) {
+      if (repositoryLinks) {
         if (!monitoredRepoIssueNumber) {
           const issue = await context.octokit.issues.create({
             labels: ["💰 oss-bounties"],
             title: "OSS Projects with Bounties",
             repo: context.payload.repository.name,
             owner: context.payload.repository.owner.login,
-            body: "This issue was created (because you triggered bounti-hunter) to help you monitor some OSS repositories for Bounties.",
+            body: "This issue was created (because you triggered **bounti-hunter**) to help you monitor some OSS repositories for Bounties.",
           });
 
           monitoredRepoIssueNumber = issue.data.number;
@@ -74,10 +73,12 @@ module.exports = (app) => {
         ];
 
         const confirmationMessage = `Way to go! 🚀🎉 \n\n You are now monitoring bounties in${
-          updatedRepoList.length > 1 ? " the following repositories:" : ":"
+          updatedRepoList.length > 1
+            ? "the following repositories:"
+            : "this repo:"
         }\n\n ${updatedRepoList
           .map((repo) => `- **${repo}**`)
-          .slice(1)
+          .slice(0)
           .join("\n")} \n\n Whenever a bounty is created in ${
           updatedRepoList.length > 1 ? "these repos" : "this repo"
         }, you'll be the first to know. How awesome! 🤯`;
@@ -99,10 +100,23 @@ module.exports = (app) => {
           repo: context.payload.repository.name,
           issue_number: monitoredRepoIssueNumber,
           owner: context.payload.repository.owner.login,
-          body: `Below are the repositories you're monitoring for bounties\n\n${updatedIssueBody
+          body: `This issue was created (because you triggered **bounti-hunter**) to help you monitor some OSS repositories for Bounties. \n\n Below are the repositories you're monitoring for bounties\n\n${updatedIssueBody
             .split("-")
             .map((repo, index) => (index === 0 ? repo : `-${repo}`))
             .join("")}`,
+        });
+      } else if (comment.body.includes("monitor-repos")) {
+        const user = context.payload.sender.login;
+
+        const message = `${
+          user === "bounti-hunter[bot]" ? "" : `@${user}`
+        }, you're missing the command. Your comment should include a **/monitor-repos** command`;
+
+        await context.octokit.issues.createComment({
+          body: message,
+          owner: context.payload.repository.owner.login,
+          repo: context.payload.repository.name,
+          issue_number: context.payload.issue.number,
         });
       } else {
         const user = context.payload.sender.login;
@@ -124,17 +138,33 @@ module.exports = (app) => {
         const cleanRepoName = (repo) =>
           repo.replace(/^\s*-\s*\*\*|\*\*\s*$/g, "").trim();
         const cleanedRepos = monitoredRepos.map((repo) => cleanRepoName(repo));
+        const user = context.payload.sender.login;
+        const repositoriesWithBounties = [];
 
         for (const repositoryName of cleanedRepos) {
           const [owner, repo] = repositoryName.split("/");
+          const { algora } = await import("@algora/sdk");
 
-          console.log(`${owner} is the owner`);
-          console.log(`this is the name of repo: ${repo}`);
-          console.log(repositoryName);
+          const { items } = await algora.bounty.list.query({
+            org: owner,
+            repo: repo,
+          });
 
-          await context.octokit.repos.get({
-            owner: "kaf-lamed-beyt",
-            repo: "css-frolicking",
+          if (items.length > 0) {
+            repositoriesWithBounties.push(repositoryName);
+          }
+        }
+
+        if (repositoriesWithBounties.length > 0) {
+          await context.octokit.issues.createComment({
+            owner: context.payload.repository.owner.login,
+            repo: context.payload.repository.name,
+            issue_number: context.payload.issue.number,
+            body: `@${user}, there are bounties in the following repositories: \n\n ${repositoriesWithBounties
+              .map((repo) => {
+                return `- [${repo}]((https://github.com/${repo}/issues?q=is%3Aissue+is%3Aopen+label%3A%22%F0%9F%92%8E+Bounty%22+-label%3A%22%F0%9F%92%B0+Rewarded%22) )`;
+              })
+              .join("\n")}`,
           });
         }
       } catch (error) {
