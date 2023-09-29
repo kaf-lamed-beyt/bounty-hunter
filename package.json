@@ -2,10 +2,10 @@
   "name": "bounty-hunter",
   "version": "1.0.0",
   "private": true,
-  "description": "Get notified whenever any repository has a bounty",
+  "description": "A sidekick for opensource contributors looking for bounties on Algora.io",
   "author": "kaf-lamed-beyt",
   "license": "MIT",
-  "homepage": "https://github.com//",
+  "homepage": "https://github.com/kaf-lamed-beyt/bounty-hunter",
   "keywords": [
     "probot",
     "github",
