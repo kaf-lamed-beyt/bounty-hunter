@@ -46,4 +46,4 @@ For more, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE) © 2023 kaf-lamed-beyt
+[ISC](LICENSE) © 2023 kaf-lamed-beyt
