@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bounti-hunter 💰</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+
+      .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        padding: 10px 20px;
+      }
+
+      .content {
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 80px;
+        font-weight: 800;
+      }
+
+      p {
+        color: rgb(109, 108, 108);
+      }
+
+      a {
+        color: #000;
+        text-decoration-color: #000;
+      }
+
+      button {
+        height: 50px;
+        width: 20%;
+        background: #000;
+        margin-top: 20px;
+        border: none;
+        color: #fff;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 300;
+      }
+
+      button:hover {
+        cursor: pointer;
+      }
+
+      .btn-outline {
+        color: #000;
+        background: #fff;
+        border: 1px solid #000;
+        margin: 0 0 0 10px;
+      }
+
+      button a {
+        text-decoration: none;
+      }
+
+      @media only screen and (min-width: 0px) and (max-width: 375px) {
+        h1 {
+          font-size: 30px;
+        }
+
+        p {
+          font-size: 12px;
+        }
+
+        button {
+          width: 100%;
+          margin-bottom: 13px;
+        }
+
+        .btn-outline {
+          margin: 0;
+        }
+      }
+
+      @media only screen and (min-width: 376px) and (max-width: 576px) {
+        h1 {
+          font-size: 43px;
+        }
+
+        p {
+          font-size: 12px;
+        }
+
+        button {
+          width: 100%;
+          margin-bottom: 13px;
+        }
+
+        .btn-outline {
+          margin: 0;
+        }
+      }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="content">
+        <h1>bounty-hunter 💰</h1>
+        <p>
+          A sidekick for opensource contributors looking for bounties on
+          <a href="https://algora.io" target="_blank">Algora.io</a>
+        </p>
+
+        <div class="btn-container">
+          <a href="https://github.com/apps/bounti-hunter" target="_blank">
+            <button>Install</button>
+          </a>
+          <a
+            href="https://github.com/kaf-lamed-beyt/bounty-hunter"
+            target="_blank"
+          >
+            <button class="btn-outline">Contribute</button>
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
