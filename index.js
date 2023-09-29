@@ -2,8 +2,6 @@
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
  */
-const { algora } = await import("@algora/sdk");
-
 module.exports = (app) => {
   let monitoredRepoIssueNumber;
 
@@ -28,6 +26,8 @@ module.exports = (app) => {
   };
 
   app.on("issue_comment.created", async (context) => {
+    const { algora } = await import("@algora/sdk");
+
     const comment = context.payload.comment;
 
     if (comment.body.includes("/monitor-repos")) {
