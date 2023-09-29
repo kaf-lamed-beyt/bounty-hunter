@@ -93,7 +93,7 @@ module.exports = (app) => {
         // update the issue with the repository list if there is any.
         const updatedIssueBody = updatedRepoList
           .map((repo) => `- **${repo}**`)
-          .splice(1)
+          .splice(0)
           .join("\n");
 
         await context.octokit.issues.update({
@@ -104,19 +104,6 @@ module.exports = (app) => {
             .split("-")
             .map((repo, index) => (index === 0 ? repo : `-${repo}`))
             .join("")}`,
-        });
-      } else if (comment.body.includes("monitor-repos")) {
-        const user = context.payload.sender.login;
-
-        const message = `${
-          user === "bounti-hunter[bot]" ? "" : `@${user}`
-        }, you're missing the command. Your comment should include a **/monitor-repos** command`;
-
-        await context.octokit.issues.createComment({
-          body: message,
-          owner: context.payload.repository.owner.login,
-          repo: context.payload.repository.name,
-          issue_number: context.payload.issue.number,
         });
       } else {
         const user = context.payload.sender.login;
@@ -162,7 +149,7 @@ module.exports = (app) => {
             issue_number: context.payload.issue.number,
             body: `@${user}, there are bounties in the following repositories: \n\n ${repositoriesWithBounties
               .map((repo) => {
-                return `- [${repo}]((https://github.com/${repo}/issues?q=is%3Aissue+is%3Aopen+label%3A%22%F0%9F%92%8E+Bounty%22+-label%3A%22%F0%9F%92%B0+Rewarded%22) )`;
+                return `- [${repo}](https://github.com/${repo}/issues?q=is%3Aissue+is%3Aopen+label%3A%22%F0%9F%92%8E+Bounty%22+-label%3A%22%F0%9F%92%B0+Rewarded%22)`;
               })
               .join("\n")}`,
           });
@@ -180,6 +167,22 @@ module.exports = (app) => {
         return;
       }
     }
+
+    // handle a case where people forget to add the forward slash
+    // else {
+    //   const user = context.payload.sender.login;
+
+    //   const message = `${
+    //     user === "bounti-hunter[bot]" ? "" : `@${user}`
+    //   }, you're missing the command. Your comment should include a **/monitor-repos** command`;
+
+    //   await context.octokit.issues.createComment({
+    //     body: message,
+    //     owner: context.payload.repository.owner.login,
+    //     repo: context.payload.repository.name,
+    //     issue_number: context.payload.issue.number,
+    //   });
+    // }
 
     if (comment.body.includes("/list-repos")) {
       const monitoredRepos = await getMonitoredReposFromIssue(context);
