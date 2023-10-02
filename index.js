@@ -2,6 +2,7 @@
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
  */
+const { algora } = require("agbalumo");
 
 module.exports = (app) => {
   let monitoredRepoIssueNumber;
@@ -130,7 +131,7 @@ module.exports = (app) => {
 
         for (const repositoryName of cleanedRepos) {
           const [owner, repo] = repositoryName.split("/");
-          const { algora } = await import("@algora/sdk");
+          // const { algora } = await import("@algora/sdk");
 
           const { items } = await algora.bounty.list.query({
             org: owner,
